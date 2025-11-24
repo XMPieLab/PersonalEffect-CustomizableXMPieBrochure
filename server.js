@@ -317,8 +317,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'XMPie Brochure Customizer API is running' });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`uProduce API URL: ${UPRODUCE_API_URL}`);
-});
+// Start server (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`uProduce API URL: ${UPRODUCE_API_URL}`);
+  });
+}
+
+// Export for Vercel serverless
+module.exports = app;
