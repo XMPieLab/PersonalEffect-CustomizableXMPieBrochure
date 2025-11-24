@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // uProduce API configuration
 const UPRODUCE_API_URL = process.env.UPRODUCE_API_URL;
@@ -315,6 +315,14 @@ app.post('/api/download-pdf', async (req, res) => {
  */
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'XMPie Brochure Customizer API is running' });
+});
+
+/**
+ * GET /
+ * Serve the main HTML page
+ */
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server (only in development)
