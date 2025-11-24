@@ -275,6 +275,78 @@
           ]
         }
       ]
+    },
+    {
+      "id": "Retro Calendar",
+      "title": "Retro Calendar",
+      "description": "Fully customizable Retro Calendar withe perpetual dates",
+      "thumbnail": null,
+      "campaignId": 12996,
+      "planId": 12915,
+       "sizes": [
+        {
+          "name": "A3",
+          "documentId": 52778,
+          "label": "A3"
+        },
+        {
+          "name": "Tabloid",
+          "documentId": 52777,
+          "label": "Tabloid"
+        }
+      ],
+      "variables": [
+        {
+          "name": "pageSize",
+          "label": "Page Size",
+          "type": "select",
+          "planObjectName": null,
+          "planObjectType": null,
+          "required": true,
+          "defaultValue": "A3",
+          "options": [
+            { "value": "A3", "label": "A3" },
+            { "value": "Tabloid", "label": "Tabloid" }
+          ]
+        },
+       {
+          "name": "language",
+          "label": "Language",
+          "type": "select",
+          "planObjectName": "Language",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "EN",
+          "options": [
+            { "value": "EN", "label": "English" },
+            { "value": "GB", "label": "UK English" },
+            { "value": "FR", "label": "French" },
+            { "value": "DE", "label": "German" },
+            { "value": "IT", "label": "Italian" },
+            { "value": "ES", "label": "Spanish" }
+          ]
+        },
+        {
+          "name": "firstName",
+          "label": "First Name",
+          "type": "text",
+          "planObjectName": "FirstName_VAR",
+          "planObjectType": "Variable",
+          "required": false,
+          "defaultValue": "David",
+          "placeholder": "Enter first name"
+        },
+        {
+          "name": "inputDate",
+          "label": "Date",
+          "type": "text",
+          "planObjectName": "InputDate",
+          "planObjectType": "Variable",
+          "required": false,
+          "defaultValue": "25/11/2025",
+          "placeholder": "DD/MM/YYYY"
+        }
+      ]
     }
   ]
 }

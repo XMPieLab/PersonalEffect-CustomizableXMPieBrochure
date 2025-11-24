@@ -261,6 +261,39 @@ body {
     border-color: hsl(var(--muted-foreground));
 }
 
+/* Date Input Styling */
+.date-input {
+    position: relative;
+    cursor: pointer;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.date-input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+/* Style the calendar icon in dark mode */
+.dark .date-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+/* Date input specific styling */
+input[type="date"].form-control {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    padding-right: 40px;
+}
+
+input[type="date"].form-control::-webkit-date-and-time-value {
+    text-align: left;
+}
+
 /* Button Styles */
 .button-group {
     display: flex;

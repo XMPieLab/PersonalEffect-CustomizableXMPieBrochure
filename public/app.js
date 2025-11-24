@@ -282,19 +282,9 @@ function selectProduct(productId) {
     // Generate form for this product
     generateForm();
     
-    // Check if we have a cached thumbnail to use as initial preview
-    if (productThumbnails.has(productId)) {
-        // Use the cached thumbnail as initial preview
-        const thumbnailData = productThumbnails.get(productId);
-        currentImages = [{ name: 'thumbnail', data: thumbnailData }];
-        currentPage = 0;
-        showPreview();
-        displayCurrentPage();
-        console.log('Using cached thumbnail for initial preview');
-    } else {
-        // Generate preview from API
-        generatePreview();
-    }
+    // Always generate a fresh preview when switching products
+    // This ensures all view modes are updated correctly
+    generatePreview();
 }
 
 /**
@@ -338,23 +328,73 @@ function generateForm() {
                 console.log(`Set default value for ${variable.name}: ${variable.defaultValue}`);
             }
         } else if (variable.type === 'text') {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'form-control';
-            input.id = variable.name;
-            input.name = variable.name;
-            input.value = variable.defaultValue || '';
-            if (variable.placeholder) {
-                input.placeholder = variable.placeholder;
+            // Check if this is a date field
+            const isDateField = variable.name.toLowerCase().includes('date');
+            
+            if (isDateField) {
+                // Create date input with calendar picker
+                input = document.createElement('input');
+                input.type = 'date';
+                input.className = 'form-control date-input';
+                input.id = variable.name;
+                input.name = variable.name;
+                
+                // Convert default value from DD/MM/YYYY to YYYY-MM-DD for date input
+                if (variable.defaultValue) {
+                    const dateParts = variable.defaultValue.split('/');
+                    if (dateParts.length === 3) {
+                        const [day, month, year] = dateParts;
+                        input.value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                    }
+                }
+                
+                // Add hidden input to store DD/MM/YYYY format for API
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.id = `${variable.name}_formatted`;
+                hiddenInput.name = variable.name;
+                hiddenInput.value = variable.defaultValue || '';
+                
+                // Update hidden input when date changes
+                input.addEventListener('change', (e) => {
+                    const dateValue = e.target.value;
+                    if (dateValue) {
+                        const [year, month, day] = dateValue.split('-');
+                        hiddenInput.value = `${day}/${month}/${year}`;
+                    } else {
+                        hiddenInput.value = '';
+                    }
+                });
+                
+                formGroup.appendChild(input);
+                formGroup.appendChild(hiddenInput);
+                
+                console.log(`Set default date for ${variable.name}: ${variable.defaultValue}`);
+            } else {
+                // Regular text input
+                input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control';
+                input.id = variable.name;
+                input.name = variable.name;
+                input.value = variable.defaultValue || '';
+                if (variable.placeholder) {
+                    input.placeholder = variable.placeholder;
+                }
+                console.log(`Set default value for ${variable.name}: ${input.value}`);
             }
-            console.log(`Set default value for ${variable.name}: ${input.value}`);
         }
         
         if (variable.required) {
             input.required = true;
         }
         
-        formGroup.appendChild(input);
+        // Only append input if it hasn't been appended already (date fields append themselves)
+        const isDateField = variable.name.toLowerCase().includes('date');
+        if (!isDateField) {
+            formGroup.appendChild(input);
+        }
+        
         formFields.appendChild(formGroup);
     });
     
@@ -422,9 +462,18 @@ function showPreview() {
 function updatePageNavigation() {
     if (currentImages.length === 0) return;
     
-    pageIndicator.textContent = `Page ${currentPage + 1} of ${currentImages.length}`;
+    const totalPages = currentImages.length;
+    pageIndicator.textContent = `Page ${currentPage + 1} of ${totalPages}`;
     prevPageBtn.disabled = currentPage === 0;
-    nextPageBtn.disabled = currentPage === currentImages.length - 1;
+    nextPageBtn.disabled = currentPage === totalPages - 1;
+    
+    // Hide navigation if only one page
+    const pageNavigation = document.querySelector('.page-navigation');
+    if (totalPages <= 1) {
+        pageNavigation.style.display = 'none';
+    } else {
+        pageNavigation.style.display = 'flex';
+    }
 }
 
 /**
@@ -438,13 +487,36 @@ function displayCurrentPage() {
 }
 
 /**
+ * Create a blank white image data URL
+ */
+function createBlankWhiteImage() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 1000;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+}
+
+/**
  * Display spread view
  */
 function displaySpread() {
     if (currentImages.length === 0) return;
     
     page1Image.src = currentImages[0]?.data || '';
-    page2Image.src = currentImages[1]?.data || '';
+    
+    // Always show second page (blank if no image for print simulation)
+    const page2Container = page2Image.parentElement;
+    page2Container.style.display = 'flex';
+    
+    if (currentImages.length > 1) {
+        page2Image.src = currentImages[1].data;
+    } else {
+        // Show blank white page to simulate reverse side
+        page2Image.src = createBlankWhiteImage();
+    }
 }
 
 /**
@@ -454,7 +526,17 @@ function display3DView() {
     if (currentImages.length === 0) return;
     
     page3DFront.src = currentImages[0]?.data || '';
-    page3DBack.src = currentImages[1]?.data || '';
+    
+    // Always show back page (blank if no image for print simulation)
+    const backPageElement = document.querySelector('.page-back');
+    backPageElement.style.display = 'block';
+    
+    if (currentImages.length > 1) {
+        page3DBack.src = currentImages[1].data;
+    } else {
+        // Show blank white page to simulate reverse side
+        page3DBack.src = createBlankWhiteImage();
+    }
     
     update3DTransform();
 }

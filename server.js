@@ -62,10 +62,25 @@ function generateJobTicket(formData, jobType = 'Proof') {
     // Skip pageSize as it's handled by document selection
     if (variable.planObjectName && variable.planObjectType) {
       const value = formData[variable.name] !== undefined ? formData[variable.name] : variable.defaultValue;
+      
+      // Check if this is a date field (contains 'date' in the name or has date format)
+      const isDateField = variable.name.toLowerCase().includes('date') || 
+                         (value && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value));
+      
+      // Format the expression based on field type
+      let expression;
+      if (isDateField && value) {
+        // Date fields need to be wrapped in # symbols
+        expression = `#${value}#`;
+      } else {
+        // Regular fields wrapped in quotes
+        expression = `"${value || ''}"`;
+      }
+      
       customizations.push({
         PlanObjectName: variable.planObjectName,
         PlanObjectType: variable.planObjectType,
-        PlanObjectExpression: `"${value || ''}"`
+        PlanObjectExpression: expression
       });
     }
   });
