@@ -1,0 +1,280 @@
+{
+  "products": [
+    {
+      "id": "xmpie-brochure",
+      "title": "XMPie Brochure",
+      "description": "Customizable XMPie marketing brochure with multiple language and industry options",
+      "thumbnail": null,
+      "campaignId": 9767,
+      "planId": 9709,
+      "sizes": [
+        {
+          "name": "A4",
+          "documentId": 39859,
+          "label": "A4"
+        },
+        {
+          "name": "Letter",
+          "documentId": 39733,
+          "label": "US Letter"
+        }
+      ],
+      "variables": [
+        {
+          "name": "pageSize",
+          "label": "Page Size",
+          "type": "select",
+          "planObjectName": null,
+          "planObjectType": null,
+          "required": true,
+          "defaultValue": "A4",
+          "options": [
+            { "value": "A4", "label": "A4" },
+            { "value": "Letter", "label": "US Letter" }
+          ]
+        },
+        {
+          "name": "language",
+          "label": "Language",
+          "type": "select",
+          "planObjectName": "Language",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "EN",
+          "options": [
+            { "value": "EN", "label": "English" },
+            { "value": "GB", "label": "UK English" },
+            { "value": "FR", "label": "French" },
+            { "value": "DE", "label": "German" },
+            { "value": "IT", "label": "Italian" },
+            { "value": "ES", "label": "Spanish" }
+          ]
+        },
+        {
+          "name": "firstName",
+          "label": "First Name",
+          "type": "text",
+          "planObjectName": "First Name",
+          "planObjectType": "ADOR",
+          "required": false,
+          "defaultValue": "YourName",
+          "placeholder": "Enter first name"
+        },
+        {
+          "name": "company",
+          "label": "Company",
+          "type": "text",
+          "planObjectName": "Company",
+          "planObjectType": "ADOR",
+          "required": false,
+          "defaultValue": "YourCompany",
+          "placeholder": "Enter company name"
+        },
+        {
+          "name": "industry",
+          "label": "Industry",
+          "type": "select",
+          "planObjectName": "VAR_Industry",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "FinancialServices",
+          "options": [
+            { "value": "FinancialServices", "label": "Financial Services" },
+            { "value": "HigherEducation", "label": "Higher Education" },
+            { "value": "InsuranceIndustry", "label": "Insurance Industry" },
+            { "value": "PrintProviders", "label": "Print Providers" },
+            { "value": "HealthcareIndustry", "label": "Healthcare Industry" },
+            { "value": "EducationProviders", "label": "Education Providers" },
+            { "value": "Other", "label": "Other" }
+          ]
+        },
+        {
+          "name": "printer",
+          "label": "Printer",
+          "type": "select",
+          "planObjectName": "VAR_Printer",
+          "planObjectType": "Variable",
+          "required": false,
+          "defaultValue": "",
+          "options": [
+            { "value": "", "label": "-- Please Select a Value --" },
+            { "value": "Baltoro", "label": "Xerox® Baltoro®" },
+            { "value": "iGen", "label": "Xerox® iGen® 5" },
+            { "value": "Iridesse", "label": "Xerox® Iridesse®" },
+            { "value": "PrimeLink", "label": "Xerox® PrimeLink® C9065/C9070" },
+            { "value": "Versant280", "label": "Xerox® Versant® 280" },
+            { "value": "Versant4100", "label": "Xerox® Versant® 4100 Press" }
+          ]
+        },
+        {
+          "name": "software1",
+          "label": "Software 1",
+          "type": "select",
+          "planObjectName": "VAR_Software1",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "StoreFlow",
+          "options": [
+            { "value": "StoreFlow", "label": "XMPie® StoreFlow" },
+            { "value": "uDirectStudio", "label": "XMPie® uDirect Studio" },
+            { "value": "PEprint", "label": "XMPie® PersonalEffect® Print" },
+            { "value": "PersonalEffectTransMedia", "label": "XMPie® PersonalEffect TransMedia" }
+          ]
+        },
+        {
+          "name": "software2",
+          "label": "Software 2",
+          "type": "select",
+          "planObjectName": "VAR_Software2",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "StoreFlow",
+          "options": [
+            { "value": "StoreFlow", "label": "XMPie® StoreFlow" },
+            { "value": "uDirectStudio", "label": "XMPie® uDirect Studio" },
+            { "value": "PEprint", "label": "XMPie® PersonalEffect® Print" },
+            { "value": "PersonalEffectTransMedia", "label": "XMPie® PersonalEffect TransMedia" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xmpie-brochure-2",
+      "title": "XMPie Brochure (US Letter)",
+      "description": "US Letter Customizable XMPie marketing brochure with multiple language and industry options",
+      "thumbnail": null,
+      "campaignId": 9767,
+      "planId": 9709,
+      "sizes": [
+        {
+          "name": "A4",
+          "documentId": 39859,
+          "label": "A4"
+        },
+        {
+          "name": "Letter",
+          "documentId": 39733,
+          "label": "US Letter"
+        }
+      ],
+      "variables": [
+        {
+          "name": "pageSize",
+          "label": "Page Size",
+          "type": "select",
+          "planObjectName": null,
+          "planObjectType": null,
+          "required": true,
+          "defaultValue": "Letter",
+          "options": [
+            { "value": "A4", "label": "A4" },
+            { "value": "Letter", "label": "US Letter" }
+          ]
+        },
+        {
+          "name": "language",
+          "label": "Language",
+          "type": "select",
+          "planObjectName": "Language",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "EN",
+          "options": [
+            { "value": "EN", "label": "English" },
+            { "value": "GB", "label": "UK English" },
+            { "value": "FR", "label": "French" },
+            { "value": "DE", "label": "German" },
+            { "value": "IT", "label": "Italian" },
+            { "value": "ES", "label": "Spanish" }
+          ]
+        },
+        {
+          "name": "firstName",
+          "label": "First Name",
+          "type": "text",
+          "planObjectName": "First Name",
+          "planObjectType": "ADOR",
+          "required": false,
+          "defaultValue": "YourName",
+          "placeholder": "Enter first name"
+        },
+        {
+          "name": "company",
+          "label": "Company",
+          "type": "text",
+          "planObjectName": "Company",
+          "planObjectType": "ADOR",
+          "required": false,
+          "defaultValue": "YourCompany",
+          "placeholder": "Enter company name"
+        },
+        {
+          "name": "industry",
+          "label": "Industry",
+          "type": "select",
+          "planObjectName": "VAR_Industry",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "PrintProviders",
+          "options": [
+            { "value": "FinancialServices", "label": "Financial Services" },
+            { "value": "HigherEducation", "label": "Higher Education" },
+            { "value": "InsuranceIndustry", "label": "Insurance Industry" },
+            { "value": "PrintProviders", "label": "Print Providers" },
+            { "value": "HealthcareIndustry", "label": "Healthcare Industry" },
+            { "value": "EducationProviders", "label": "Education Providers" },
+            { "value": "Other", "label": "Other" }
+          ]
+        },
+        {
+          "name": "printer",
+          "label": "Printer",
+          "type": "select",
+          "planObjectName": "VAR_Printer",
+          "planObjectType": "Variable",
+          "required": false,
+          "defaultValue": "Versant280",
+          "options": [
+            { "value": "", "label": "-- Please Select a Value --" },
+            { "value": "Baltoro", "label": "Xerox® Baltoro®" },
+            { "value": "iGen", "label": "Xerox® iGen® 5" },
+            { "value": "Iridesse", "label": "Xerox® Iridesse®" },
+            { "value": "PrimeLink", "label": "Xerox® PrimeLink® C9065/C9070" },
+            { "value": "Versant280", "label": "Xerox® Versant® 280" },
+            { "value": "Versant4100", "label": "Xerox® Versant® 4100 Press" }
+          ]
+        },
+        {
+          "name": "software1",
+          "label": "Software 1",
+          "type": "select",
+          "planObjectName": "VAR_Software1",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "StoreFlow",
+          "options": [
+            { "value": "StoreFlow", "label": "XMPie® StoreFlow" },
+            { "value": "uDirectStudio", "label": "XMPie® uDirect Studio" },
+            { "value": "PEprint", "label": "XMPie® PersonalEffect® Print" },
+            { "value": "PersonalEffectTransMedia", "label": "XMPie® PersonalEffect TransMedia" }
+          ]
+        },
+        {
+          "name": "software2",
+          "label": "Software 2",
+          "type": "select",
+          "planObjectName": "VAR_Software2",
+          "planObjectType": "Variable",
+          "required": true,
+          "defaultValue": "StoreFlow",
+          "options": [
+            { "value": "StoreFlow", "label": "XMPie® StoreFlow" },
+            { "value": "uDirectStudio", "label": "XMPie® uDirect Studio" },
+            { "value": "PEprint", "label": "XMPie® PersonalEffect® Print" },
+            { "value": "PersonalEffectTransMedia", "label": "XMPie® PersonalEffect TransMedia" }
+          ]
+        }
+      ]
+    }
+  ]
+}

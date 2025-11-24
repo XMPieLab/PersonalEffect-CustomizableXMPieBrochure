@@ -8,10 +8,13 @@ A standalone web application demonstrating the capabilities of **XMPie uProduce*
 
 This application extracts the brochure customization functionality from XMPie's StoreFlow eCommerce platform and provides it as a standalone demo. Users can:
 
-- Customize brochure fields in real-time
-- View low-resolution JPG previews instantly
-- Download high-resolution print-ready PDFs
-- Toggle between single-page and spread view modes
+- **Select from multiple templates** - Support for unlimited product templates via JSON configuration
+- **Customize brochure fields in real-time** - Dynamic form generation based on template
+- **View low-resolution JPG previews instantly** - Fast preview generation
+- **Download high-resolution print-ready PDFs** - Production-quality output
+- **Toggle between single-page and spread view modes** - Flexible viewing options
+
+> **New in v2.0:** Multi-template support! See [MULTI_TEMPLATE_GUIDE.md](MULTI_TEMPLATE_GUIDE.md) for details on configuring multiple templates.
 
 ## Features
 
@@ -111,17 +114,39 @@ This application extracts the brochure customization functionality from XMPie's 
 
 ```
 xmpie-brochure-customizer/
-├── server.js              # Express server and API endpoints
-├── package.json           # Dependencies and scripts
-├── .env                   # Environment configuration
-├── README.md             # This file
-└── public/               # Frontend assets
-    ├── index.html        # Main HTML page
-    ├── styles.css        # Styling
-    └── app.js            # Frontend JavaScript
+├── server.js                  # Express server and API endpoints
+├── package.json               # Dependencies and scripts
+├── .env                       # Environment configuration
+├── products.json              # Product/template configuration (NEW)
+├── README.md                  # This file
+├── MULTI_TEMPLATE_GUIDE.md    # Multi-template system guide (NEW)
+└── public/                    # Frontend assets
+    ├── index.html             # Main HTML page
+    ├── styles.css             # Styling
+    └── app.js                 # Frontend JavaScript
 ```
 
 ## API Endpoints
+
+### GET /api/products
+Get available products/templates configuration.
+
+**Response:**
+```json
+{
+  "products": [
+    {
+      "id": "xmpie-brochure",
+      "title": "XMPie Brochure",
+      "description": "Customizable XMPie marketing brochure...",
+      "campaignId": 9767,
+      "planId": 9709,
+      "sizes": [...],
+      "variables": [...]
+    }
+  ]
+}
+```
 
 ### POST /api/preview
 Generate low-resolution JPG previews of the brochure.
@@ -129,6 +154,7 @@ Generate low-resolution JPG previews of the brochure.
 **Request Body:**
 ```json
 {
+  "productId": "xmpie-brochure",
   "pageSize": "A4",
   "language": "EN",
   "firstName": "John",
@@ -207,9 +233,22 @@ The application uses two types of job tickets:
 
 ## Customization
 
-### Modifying Form Fields
+### Adding/Modifying Templates
 
-Edit `public/index.html` to add or modify form fields. Update the corresponding job ticket generation in `server.js`.
+**The new multi-template system makes customization much easier!**
+
+Simply edit `products.json` to:
+- Add new templates
+- Modify existing templates
+- Change available fields
+- Update options and defaults
+
+See [MULTI_TEMPLATE_GUIDE.md](MULTI_TEMPLATE_GUIDE.md) for complete documentation.
+
+### Legacy: Modifying Form Fields (Old Method)
+
+For the old single-template approach, you would edit `public/index.html` and `server.js`. 
+**This is no longer necessary** - use `products.json` instead!
 
 ### Styling
 

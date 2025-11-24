@@ -3,6 +3,7 @@ const axios = require('axios');
 const cors = require('cors');
 const AdmZip = require('adm-zip');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -20,24 +21,60 @@ const AUTH = {
   password: process.env.UPRODUCE_PASSWORD
 };
 
-// Campaign configuration
-const CAMPAIGN_ID = parseInt(process.env.CAMPAIGN_ID);
-const PLAN_ID = parseInt(process.env.PLAN_ID);
-const DOCUMENT_ID_A4 = 39859;  // A4 brochure
-const DOCUMENT_ID_LETTER = 39733;  // US Letter brochure
+// Load products configuration
+let productsConfig = { products: [] };
+try {
+  const productsData = fs.readFileSync(path.join(__dirname, 'products.json'), 'utf8');
+  productsConfig = JSON.parse(productsData);
+  console.log(`Loaded ${productsConfig.products.length} product(s) from products.json`);
+} catch (error) {
+  console.error('Error loading products.json:', error.message);
+  console.log('Using empty products configuration');
+}
+
+/**
+ * Get product configuration by ID
+ */
+function getProductById(productId) {
+  return productsConfig.products.find(p => p.id === productId);
+}
 
 /**
  * Generate job ticket for preview (JPG) or print (PDF)
  */
 function generateJobTicket(formData, jobType = 'Proof') {
+  // Get product configuration
+  const product = getProductById(formData.productId);
+  if (!product) {
+    throw new Error(`Product not found: ${formData.productId}`);
+  }
+
   // Select document ID based on page size
-  const documentId = formData.pageSize === 'Letter' ? DOCUMENT_ID_LETTER : DOCUMENT_ID_A4;
+  const sizeConfig = product.sizes.find(s => s.name === formData.pageSize);
+  if (!sizeConfig) {
+    throw new Error(`Size not found: ${formData.pageSize}`);
+  }
+  const documentId = sizeConfig.documentId;
+  
+  // Build customizations dynamically from product variables
+  const customizations = [];
+  product.variables.forEach(variable => {
+    // Skip pageSize as it's handled by document selection
+    if (variable.planObjectName && variable.planObjectType) {
+      const value = formData[variable.name] !== undefined ? formData[variable.name] : variable.defaultValue;
+      customizations.push({
+        PlanObjectName: variable.planObjectName,
+        PlanObjectType: variable.planObjectType,
+        PlanObjectExpression: `"${value || ''}"`
+      });
+    }
+  });
   
   const baseTicket = {
     Job: {
       JobType: jobType,
       Context: {
-        CampaignId: CAMPAIGN_ID
+        CampaignId: product.campaignId
       }
     },
     Data: {
@@ -55,44 +92,8 @@ function generateJobTicket(formData, jobType = 'Proof') {
       }
     },
     Plan: {
-      Id: PLAN_ID,
-      Customizations: [
-        {
-          PlanObjectName: "Language",
-          PlanObjectType: "Variable",
-          PlanObjectExpression: `"${formData.language}"`
-        },
-        {
-          PlanObjectName: "First Name",
-          PlanObjectType: "ADOR",
-          PlanObjectExpression: `"${formData.firstName || ''}"`
-        },
-        {
-          PlanObjectName: "Company",
-          PlanObjectType: "ADOR",
-          PlanObjectExpression: `"${formData.company || ''}"`
-        },
-        {
-          PlanObjectName: "VAR_Industry",
-          PlanObjectType: "Variable",
-          PlanObjectExpression: `"${formData.industry}"`
-        },
-        {
-          PlanObjectName: "VAR_Printer",
-          PlanObjectType: "Variable",
-          PlanObjectExpression: `"${formData.printer || ''}"`
-        },
-        {
-          PlanObjectName: "VAR_Software1",
-          PlanObjectType: "Variable",
-          PlanObjectExpression: `"${formData.software1}"`
-        },
-        {
-          PlanObjectName: "VAR_Software2",
-          PlanObjectType: "Variable",
-          PlanObjectExpression: `"${formData.software2}"`
-        }
-      ]
+      Id: product.planId,
+      Customizations: customizations
     },
     Document: {
       Id: documentId,
@@ -311,6 +312,14 @@ app.post('/api/download-pdf', async (req, res) => {
       details: error.response?.data || error.message
     });
   }
+});
+
+/**
+ * GET /api/products
+ * Get available products/templates
+ */
+app.get('/api/products', (req, res) => {
+  res.json(productsConfig);
 });
 
 /**
