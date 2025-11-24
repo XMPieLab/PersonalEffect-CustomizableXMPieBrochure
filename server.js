@@ -23,12 +23,16 @@ const AUTH = {
 // Campaign configuration
 const CAMPAIGN_ID = parseInt(process.env.CAMPAIGN_ID);
 const PLAN_ID = parseInt(process.env.PLAN_ID);
-const DOCUMENT_ID = parseInt(process.env.DOCUMENT_ID);
+const DOCUMENT_ID_A4 = 39859;  // A4 brochure
+const DOCUMENT_ID_LETTER = 39733;  // US Letter brochure
 
 /**
  * Generate job ticket for preview (JPG) or print (PDF)
  */
 function generateJobTicket(formData, jobType = 'Proof') {
+  // Select document ID based on page size
+  const documentId = formData.pageSize === 'Letter' ? DOCUMENT_ID_LETTER : DOCUMENT_ID_A4;
+  
   const baseTicket = {
     Job: {
       JobType: jobType,
@@ -91,7 +95,7 @@ function generateJobTicket(formData, jobType = 'Proof') {
       ]
     },
     Document: {
-      Id: DOCUMENT_ID,
+      Id: documentId,
       Fonts: {
         UseCampaignFonts: true
       }

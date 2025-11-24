@@ -38,8 +38,13 @@ In the Vercel project settings, add these environment variables:
 | `UPRODUCE_PASSWORD` | `Chalk2Chee$e` | Your uProduce password |
 | `CAMPAIGN_ID` | `9767` | Campaign ID |
 | `PLAN_ID` | `9709` | Plan ID |
-| `DOCUMENT_ID` | `39859` | Document ID |
 | `NODE_ENV` | `production` | Set to production |
+
+**Note:** Document IDs are now hardcoded in `server.js`:
+- A4 brochure: `39859`
+- US Letter brochure: `39733`
+
+The correct document is automatically selected based on the page size chosen by the user.
 
 **To add environment variables in Vercel:**
 

@@ -84,8 +84,13 @@ This application extracts the brochure customization functionality from XMPie's 
    UPRODUCE_PASSWORD=Chalk2Chee$e
    CAMPAIGN_ID=9767
    PLAN_ID=9709
-   DOCUMENT_ID=39859
    ```
+   
+   **Note:** Document IDs are hardcoded in `server.js`:
+   - A4 brochure: Document ID `39859`
+   - US Letter brochure: Document ID `39733`
+   
+   The application automatically selects the correct document based on the page size.
 
 4. **Start the server**
    ```bash
