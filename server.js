@@ -5,6 +5,7 @@ const AdmZip = require('adm-zip');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const thumbnailCache = require('./thumbnailCache');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -338,6 +339,123 @@ app.get('/api/products', (req, res) => {
 });
 
 /**
+ * GET /api/thumbnail/:productId
+ * Get cached thumbnail or generate one for a product
+ */
+app.get('/api/thumbnail/:productId', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const product = getProductById(productId);
+    
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // Check if product has a static thumbnail URL
+    if (product.thumbnail) {
+      return res.json({
+        success: true,
+        productId,
+        thumbnail: product.thumbnail,
+        cached: false,
+        source: 'static'
+      });
+    }
+    
+    // Check cache first
+    const cachedThumbnail = await thumbnailCache.getThumbnail(productId);
+    if (cachedThumbnail) {
+      return res.json({
+        success: true,
+        productId,
+        thumbnail: cachedThumbnail,
+        cached: true,
+        persistent: thumbnailCache.isPersistent()
+      });
+    }
+    
+    // Generate thumbnail using default values
+    const defaultFormData = { productId };
+    product.variables.forEach(variable => {
+      defaultFormData[variable.name] = variable.defaultValue || '';
+    });
+    
+    const jobTicket = generateJobTicket(defaultFormData, 'Proof');
+    
+    console.log(`Generating thumbnail for product: ${productId}`);
+    
+    // Submit job to uProduce API
+    const jobResponse = await axios.post(
+      `${UPRODUCE_API_URL}/v1/jobs/immediate`,
+      jobTicket,
+      {
+        auth: AUTH,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+    
+    const jobData = jobResponse.data;
+    
+    if (jobData.Status !== 'Completed') {
+      return res.status(500).json({
+        error: 'Thumbnail generation failed',
+        status: jobData.Status
+      });
+    }
+    
+    // Download and extract first page
+    const downloadResponse = await axios.get(
+      `${UPRODUCE_API_URL}/v1/jobs/${jobData.FriendlyId}/output/download`,
+      { auth: AUTH, responseType: 'arraybuffer' }
+    );
+    
+    const zip = new AdmZip(downloadResponse.data);
+    const zipEntries = zip.getEntries();
+    
+    let thumbnailData = null;
+    for (const entry of zipEntries) {
+      if (entry.entryName.endsWith('.jpg') || entry.entryName.endsWith('.jpeg')) {
+        const imageBuffer = entry.getData();
+        thumbnailData = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
+        break;
+      }
+    }
+    
+    if (!thumbnailData) {
+      return res.status(500).json({ error: 'No image in job output' });
+    }
+    
+    // Cache the thumbnail
+    await thumbnailCache.setThumbnail(productId, thumbnailData);
+    
+    res.json({
+      success: true,
+      productId,
+      thumbnail: thumbnailData,
+      cached: false,
+      persistent: thumbnailCache.isPersistent()
+    });
+    
+  } catch (error) {
+    console.error('Error generating thumbnail:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to generate thumbnail',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/thumbnail/:productId
+ * Invalidate a cached thumbnail
+ */
+app.delete('/api/thumbnail/:productId', async (req, res) => {
+  const { productId } = req.params;
+  await thumbnailCache.invalidateThumbnail(productId);
+  res.json({ success: true, message: `Thumbnail cache cleared for ${productId}` });
+});
+
+/**
  * GET /api/health
  * Health check endpoint
  */
@@ -353,13 +471,15 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start server (only in development)
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`uProduce API URL: ${UPRODUCE_API_URL}`);
-  });
-}
+// Initialize cache and start server
+thumbnailCache.initCache().then(() => {
+  if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`uProduce API URL: ${UPRODUCE_API_URL}`);
+    });
+  }
+});
 
 // Export for Vercel serverless
 module.exports = app;

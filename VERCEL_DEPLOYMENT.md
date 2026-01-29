@@ -40,6 +40,23 @@ In the Vercel project settings, add these environment variables:
 | `PLAN_ID` | `9709` | Plan ID |
 | `NODE_ENV` | `production` | Set to production |
 
+**Optional - Persistent Thumbnail Caching (Vercel Blob Storage):**
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `BLOB_READ_WRITE_TOKEN` | (auto-populated) | Vercel Blob read/write token |
+
+To enable persistent thumbnail caching across deployments:
+
+1. Go to your Vercel project dashboard
+2. Click "Storage" → "Create Database" → "Blob"
+3. Name it (e.g., `thumbnail-store`) and create
+4. Connect it to your project - the `BLOB_READ_WRITE_TOKEN` is auto-populated
+5. Redeploy your application
+
+Thumbnails are stored as public JPG files and served directly from Vercel's CDN.
+Without Blob Storage, thumbnails use in-memory caching (reset on each deployment).
+
 **Note:** Document IDs are now hardcoded in `server.js`:
 - A4 brochure: `39859`
 - US Letter brochure: `39733`

@@ -149,6 +149,7 @@ function renderProductSelector() {
 
 /**
  * Generate thumbnail for a product
+ * Uses server-side caching endpoint for persistent thumbnails across sessions
  */
 async function generateThumbnail(product) {
     const thumbElement = document.getElementById(`thumb-${product.id}`);
@@ -158,14 +159,7 @@ async function generateThumbnail(product) {
         return;
     }
     
-    // If product has a thumbnail URL, use it
-    if (product.thumbnail) {
-        thumbElement.innerHTML = `<img src="${product.thumbnail}" alt="${product.title}">`;
-        thumbElement.classList.remove('loading');
-        return;
-    }
-    
-    // Check if we already generated this thumbnail
+    // Check client-side cache first (for current session)
     if (productThumbnails.has(product.id)) {
         const cachedThumb = productThumbnails.get(product.id);
         thumbElement.innerHTML = `<img src="${cachedThumb}" alt="${product.title}">`;
@@ -173,47 +167,32 @@ async function generateThumbnail(product) {
         return;
     }
     
-    // Generate thumbnail by calling preview API with default values
+    // Fetch from server (uses server-side persistent cache)
     try {
-        const defaultFormData = {
-            productId: product.id
-        };
-        
-        // Add default values from variables
-        product.variables.forEach(variable => {
-            defaultFormData[variable.name] = variable.defaultValue || '';
-        });
-        
-        const response = await fetch('/api/preview', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(defaultFormData)
-        });
+        const response = await fetch(`/api/thumbnail/${encodeURIComponent(product.id)}`);
         
         if (!response.ok) {
-            throw new Error('Failed to generate thumbnail');
+            throw new Error('Failed to fetch thumbnail');
         }
         
         const data = await response.json();
         
-        if (data.success && data.images && data.images.length > 0) {
-            // Use first page as thumbnail
-            const thumbnailData = data.images[0].data;
+        if (data.success && data.thumbnail) {
+            const thumbnailData = data.thumbnail;
             productThumbnails.set(product.id, thumbnailData);
             
-            // Re-get the element to ensure we have the latest reference
             const currentThumbElement = document.getElementById(`thumb-${product.id}`);
             if (currentThumbElement) {
                 currentThumbElement.innerHTML = `<img src="${thumbnailData}" alt="${product.title}">`;
                 currentThumbElement.classList.remove('loading');
-                console.log(`Thumbnail loaded for: ${product.title}`);
+                const cacheStatus = data.cached ? '(cached)' : '(generated)';
+                const persistStatus = data.persistent ? 'persistent' : 'session';
+                console.log(`Thumbnail loaded for: ${product.title} ${cacheStatus} [${persistStatus}]`);
             } else {
                 console.error(`Lost reference to thumbnail element for: ${product.id}`);
             }
         } else {
-            throw new Error('No images in response');
+            throw new Error('No thumbnail in response');
         }
     } catch (error) {
         console.error(`Error generating thumbnail for ${product.title}:`, error);

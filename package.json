@@ -20,7 +20,8 @@
     "axios": "^1.6.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "adm-zip": "^0.5.10"
+    "adm-zip": "^0.5.10",
+    "@vercel/blob": "^0.27.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
