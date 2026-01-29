@@ -2,6 +2,8 @@
 
 A technical demonstration of the **XMPie uProduce REST API** for on-demand document generation. This application showcases how to integrate PersonalEffect's variable data printing capabilities into custom web applications.
 
+**Live Demo:** [personal-effect-customizable-xm-pie.vercel.app](https://personal-effect-customizable-xm-pie.vercel.app/)
+
 ## What This Demonstrates
 
 This demo illustrates key XMPie uProduce API capabilities:
