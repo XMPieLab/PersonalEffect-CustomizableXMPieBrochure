@@ -153,53 +153,27 @@ body {
     background: hsl(var(--accent));
 }
 
-.theme-toggle-icon {
+.theme-icon {
     width: 20px;
     height: 20px;
-    position: relative;
+    color: hsl(var(--foreground));
 }
 
-/* Sun icon for light mode */
-.theme-toggle-icon::before {
-    content: '';
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid hsl(var(--foreground));
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+/* Sun icon visible in light mode, moon in dark mode */
+.sun-icon {
+    display: block;
 }
 
-.theme-toggle-icon::after {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: 
-        linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) 50% 0/2px 4px,
-        linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) 50% 100%/2px 4px,
-        linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) 0 50%/4px 2px,
-        linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) 100% 50%/4px 2px;
-    background-repeat: no-repeat;
-}
-
-/* Moon icon for dark mode */
-.dark .theme-toggle-icon::before {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: none;
-    background: hsl(var(--foreground));
-    box-shadow: -4px -2px 0 0 hsl(var(--background));
-}
-
-.dark .theme-toggle-icon::after {
+.moon-icon {
     display: none;
+}
+
+.dark .sun-icon {
+    display: none;
+}
+
+.dark .moon-icon {
+    display: block;
 }
 
 /* Main Content Layout */
