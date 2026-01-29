@@ -49,16 +49,19 @@ async function getThumbnail(productId) {
   
   if (useVercelBlob && blob) {
     try {
-      const { list } = blob;
-      const result = await list({ prefix: path, limit: 1 });
+      const { head } = blob;
+      // Use head() to check if specific blob exists (more reliable than list)
+      const result = await head(path);
       
-      if (result.blobs.length > 0) {
-        const blobUrl = result.blobs[0].url;
+      if (result && result.url) {
         console.log(`Thumbnail cache HIT (Blob): ${productId}`);
-        return blobUrl;
+        return result.url;
       }
     } catch (error) {
-      console.error('Error reading from Vercel Blob:', error.message);
+      // head() throws NotFoundError if blob doesn't exist - this is expected for cache miss
+      if (error.name !== 'BlobNotFoundError' && !error.message?.includes('not found')) {
+        console.error('Error reading from Vercel Blob:', error.message);
+      }
     }
   } else {
     const cached = memoryCache.get(productId);

@@ -318,21 +318,19 @@ function generateForm() {
                 input.id = variable.name;
                 input.name = variable.name;
                 
-                // Convert default value from DD/MM/YYYY to YYYY-MM-DD for date input
-                if (variable.defaultValue) {
-                    const dateParts = variable.defaultValue.split('/');
-                    if (dateParts.length === 3) {
-                        const [day, month, year] = dateParts;
-                        input.value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                    }
-                }
+                // Default to current date (YYYY-MM-DD format for date input)
+                const today = new Date();
+                const currentDateISO = today.toISOString().split('T')[0];
+                const currentDateFormatted = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+                
+                input.value = currentDateISO;
                 
                 // Add hidden input to store DD/MM/YYYY format for API
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';
                 hiddenInput.id = `${variable.name}_formatted`;
                 hiddenInput.name = variable.name;
-                hiddenInput.value = variable.defaultValue || '';
+                hiddenInput.value = currentDateFormatted;
                 
                 // Update hidden input when date changes
                 input.addEventListener('change', (e) => {
@@ -348,7 +346,7 @@ function generateForm() {
                 formGroup.appendChild(input);
                 formGroup.appendChild(hiddenInput);
                 
-                console.log(`Set default date for ${variable.name}: ${variable.defaultValue}`);
+                console.log(`Set default date for ${variable.name}: ${currentDateFormatted} (current date)`);
             } else {
                 // Regular text input
                 input = document.createElement('input');
@@ -865,6 +863,9 @@ document.addEventListener('keydown', (e) => {
 // Initialize
 initTheme();
 viewModeIcon.classList.add('single');
+
+// Set current year in footer
+document.getElementById('currentYear').textContent = new Date().getFullYear();
 
 // Load products and initialize
 loadProducts();

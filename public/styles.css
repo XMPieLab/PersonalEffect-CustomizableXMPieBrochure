@@ -448,21 +448,20 @@ input[type="date"].form-control::-webkit-date-and-time-value {
 
 /* 3D View Icon */
 .view-3d-icon {
-    width: 18px;
+    width: 20px;
     height: 18px;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .view-3d-icon::before {
-    content: '';
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    border: 2px solid hsl(var(--foreground));
-    border-radius: 2px;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%) rotateX(45deg) rotateZ(45deg);
+    content: '3D';
+    font-size: 11px;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    letter-spacing: -0.5px;
 }
 
 .view-toggle.active {
@@ -471,7 +470,7 @@ input[type="date"].form-control::-webkit-date-and-time-value {
 }
 
 .view-toggle.active .view-3d-icon::before {
-    border-color: hsl(var(--primary-foreground));
+    color: hsl(var(--primary-foreground));
 }
 
 /* Loading State */
