@@ -111,6 +111,30 @@ body {
     color: hsl(var(--muted-foreground));
 }
 
+/* GitHub Link */
+.github-link {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--foreground));
+    transition: all 0.2s ease;
+}
+
+.github-link:hover {
+    background: hsl(var(--muted));
+    color: hsl(var(--primary));
+}
+
+.github-icon {
+    width: 20px;
+    height: 20px;
+}
+
 /* Theme Toggle */
 .theme-toggle {
     width: 40px;
