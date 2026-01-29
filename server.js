@@ -1,3 +1,13 @@
+/**
+ * XMPie Template Customizer - Server
+ * 
+ * Express server that provides API endpoints for generating previews and PDFs
+ * using the XMPie uProduce API. Supports multiple templates via products.json.
+ * 
+ * @author XMPie
+ * @version 1.0.0
+ */
+
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
@@ -10,10 +20,103 @@ const thumbnailCache = require('./thumbnailCache');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// =============================================================================
+// SECURITY MIDDLEWARE
+// =============================================================================
+
+// Rate limiting store (in-memory, resets on restart)
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 30; // Max requests per window per IP
+
+/**
+ * Simple rate limiter middleware
+ * Limits requests per IP to prevent API abuse
+ */
+function rateLimiter(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const now = Date.now();
+  
+  if (!rateLimitStore.has(ip)) {
+    rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return next();
+  }
+  
+  const record = rateLimitStore.get(ip);
+  
+  if (now > record.resetTime) {
+    record.count = 1;
+    record.resetTime = now + RATE_LIMIT_WINDOW_MS;
+    return next();
+  }
+  
+  record.count++;
+  
+  if (record.count > RATE_LIMIT_MAX_REQUESTS) {
+    console.warn(`Rate limit exceeded for IP: ${ip}`);
+    return res.status(429).json({ 
+      error: 'Too many requests', 
+      message: 'Please wait before making more requests',
+      retryAfter: Math.ceil((record.resetTime - now) / 1000)
+    });
+  }
+  
+  next();
+}
+
+/**
+ * Input sanitizer - removes potentially dangerous characters
+ */
+function sanitizeInput(value) {
+  if (typeof value !== 'string') return value;
+  // Remove script tags and dangerous patterns
+  return value
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .trim()
+    .substring(0, 500); // Limit field length
+}
+
+/**
+ * Sanitize all string values in an object
+ */
+function sanitizeFormData(data) {
+  const sanitized = {};
+  for (const [key, value] of Object.entries(data)) {
+    sanitized[key] = sanitizeInput(value);
+  }
+  return sanitized;
+}
+
+/**
+ * Validate that productId exists in configuration
+ */
+function validateProductId(productId) {
+  if (!productId || typeof productId !== 'string') return false;
+  return productsConfig.products.some(p => p.id === productId);
+}
+
+// =============================================================================
+// MIDDLEWARE SETUP
+// =============================================================================
+
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
+app.use(express.json({ limit: '1mb' })); // Limit request body size
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(rateLimiter); // Apply rate limiting to all routes
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 // uProduce API configuration
 const UPRODUCE_API_URL = process.env.UPRODUCE_API_URL;
@@ -175,7 +278,13 @@ function generateJobTicket(formData, jobType = 'Proof') {
  */
 app.post('/api/preview', async (req, res) => {
   try {
-    const formData = req.body;
+    // Validate and sanitize input
+    const formData = sanitizeFormData(req.body);
+    
+    if (!validateProductId(formData.productId)) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+    
     const jobTicket = generateJobTicket(formData, 'Proof');
 
     console.log('Submitting preview job to uProduce API...');
@@ -258,7 +367,13 @@ app.post('/api/preview', async (req, res) => {
  */
 app.post('/api/download-pdf', async (req, res) => {
   try {
-    const formData = req.body;
+    // Validate and sanitize input
+    const formData = sanitizeFormData(req.body);
+    
+    if (!validateProductId(formData.productId)) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+    
     const jobTicket = generateJobTicket(formData, 'Print');
 
     console.log('Submitting PDF job to uProduce API...');

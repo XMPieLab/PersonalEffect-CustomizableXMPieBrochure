@@ -1,4 +1,16 @@
-// Application State
+/**
+ * XMPie Template Customizer - Frontend Application
+ * 
+ * Handles UI interactions, form generation, preview display, and PDF downloads.
+ * Supports multiple templates via dynamic form generation from products.json.
+ * 
+ * @author XMPie
+ * @version 1.0.0
+ */
+
+// =============================================================================
+// APPLICATION STATE
+// =============================================================================
 let productsConfig = null;
 let currentProduct = null;
 let currentImages = [];
@@ -23,7 +35,9 @@ let view3DState = {
     startTranslateY: 0
 };
 
-// DOM Elements
+// =============================================================================
+// DOM ELEMENTS
+// =============================================================================
 const form = document.getElementById('customizationForm');
 const formFields = document.getElementById('formFields');
 const productSelector = document.getElementById('productSelector');
@@ -40,7 +54,7 @@ const view3DIcon = document.getElementById('view3DIcon');
 const themeToggle = document.getElementById('themeToggle');
 const retryBtn = document.getElementById('retryBtn');
 
-// State Elements
+// State Elements (loading, error, preview containers)
 const mainContent = document.querySelector('.main-content');
 const loadingState = document.getElementById('loadingState');
 const errorState = document.getElementById('errorState');
@@ -803,7 +817,9 @@ function setupAutoRefresh() {
     });
 }
 
-// Event Listeners
+// =============================================================================
+// EVENT LISTENERS
+// =============================================================================
 refreshPreviewBtn.addEventListener('click', generatePreview);
 downloadPdfBtn.addEventListener('click', downloadPdf);
 viewModeToggle.addEventListener('click', toggleViewMode);
@@ -860,16 +876,12 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Initialize
+// =============================================================================
+// INITIALIZATION
+// =============================================================================
 initTheme();
 viewModeIcon.classList.add('single');
-
-// Set current year in footer
 document.getElementById('currentYear').textContent = new Date().getFullYear();
-
-// Load products and initialize
 loadProducts();
 
-// Show initial message
-console.log('XMPie Brochure Customizer loaded successfully!');
-console.log('Powered by PersonalEffect Print Pro & uProduce API');
+console.log('XMPie Template Customizer loaded');

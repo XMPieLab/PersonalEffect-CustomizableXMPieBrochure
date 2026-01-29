@@ -14,7 +14,7 @@ This application extracts the brochure customization functionality from XMPie's 
 - **Download high-resolution print-ready PDFs** - Production-quality output
 - **Toggle between single-page and spread view modes** - Flexible viewing options
 
-> **New in v2.0:** Multi-template support! See [MULTI_TEMPLATE_GUIDE.md](MULTI_TEMPLATE_GUIDE.md) for details on configuring multiple templates.
+> **Multi-template support:** Configure unlimited templates via `products.json`.
 
 ## Features
 
@@ -82,18 +82,12 @@ This application extracts the brochure customization functionality from XMPie's 
    Edit the `.env` file with your uProduce API credentials:
    ```env
    PORT=3000
-   UPRODUCE_API_URL=https://your-uproduce-server.com/api
-   UPRODUCE_USERNAME=David
-   UPRODUCE_PASSWORD=Chalk2Chee$e
-   CAMPAIGN_ID=9767
-   PLAN_ID=9709
+   UPRODUCE_API_URL=https://your-uproduce-server.com/XMpieRestAPI/
+   UPRODUCE_USERNAME=your_username
+   UPRODUCE_PASSWORD=your_password
    ```
    
-   **Note:** Document IDs are hardcoded in `server.js`:
-   - A4 brochure: Document ID `39859`
-   - US Letter brochure: Document ID `39733`
-   
-   The application automatically selects the correct document based on the page size.
+   **Note:** Campaign IDs, Plan IDs, and Document IDs are configured in `products.json` for each template.
 
 4. **Start the server**
    ```bash
@@ -115,11 +109,13 @@ This application extracts the brochure customization functionality from XMPie's 
 ```
 xmpie-brochure-customizer/
 ├── server.js                  # Express server and API endpoints
+├── thumbnailCache.js          # Persistent thumbnail caching module
 ├── package.json               # Dependencies and scripts
-├── .env                       # Environment configuration
-├── products.json              # Product/template configuration (NEW)
+├── .env                       # Environment configuration (DO NOT COMMIT)
+├── products.json              # Product/template configuration
+├── vercel.json                # Vercel deployment configuration
 ├── README.md                  # This file
-├── MULTI_TEMPLATE_GUIDE.md    # Multi-template system guide (NEW)
+├── VERCEL_DEPLOYMENT.md       # Vercel deployment guide
 └── public/                    # Frontend assets
     ├── index.html             # Main HTML page
     ├── styles.css             # Styling
@@ -235,20 +231,11 @@ The application uses two types of job tickets:
 
 ### Adding/Modifying Templates
 
-**The new multi-template system makes customization much easier!**
-
-Simply edit `products.json` to:
-- Add new templates
-- Modify existing templates
-- Change available fields
-- Update options and defaults
-
-See [MULTI_TEMPLATE_GUIDE.md](MULTI_TEMPLATE_GUIDE.md) for complete documentation.
-
-### Legacy: Modifying Form Fields (Old Method)
-
-For the old single-template approach, you would edit `public/index.html` and `server.js`. 
-**This is no longer necessary** - use `products.json` instead!
+Edit `products.json` to:
+- Add new templates with unique IDs
+- Modify existing template variables
+- Change available options and defaults
+- Configure different page sizes and document IDs
 
 ### Styling
 
@@ -286,13 +273,20 @@ The modular structure makes it easy to add features:
 2. Verify uProduce API server is accessible
 3. Check CORS settings if running on different domain
 
-## Security Notes
+## Security Features
 
-- **Never commit `.env` file** with real credentials
+The application includes built-in security measures:
+
+- **Rate Limiting**: 30 requests per minute per IP to prevent API abuse
+- **Input Sanitization**: All user inputs are sanitized to prevent XSS attacks
+- **Request Size Limits**: Maximum 1MB request body size
+- **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+- **Product Validation**: Only configured product IDs are accepted
+
+**Best Practices:**
+- Never commit `.env` file with real credentials
 - Use environment variables for sensitive data
-- Implement rate limiting for production use
-- Add authentication for public-facing deployments
-- Use HTTPS in production
+- Use HTTPS in production (automatic on Vercel)
 
 ## Performance Optimization
 
@@ -326,4 +320,4 @@ Powered by:
 - **XMPie uProduce API**
 - **XMPie StoreFlow**
 
-© 2025 XMPie - A Xerox Company
+© 2026 XMPie - A CareAR Company

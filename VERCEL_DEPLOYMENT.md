@@ -31,14 +31,14 @@ In the Vercel project settings, add these environment variables:
 
 **Required Variables:**
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `UPRODUCE_API_URL` | `https://marketingx.xmpie.net/XMpieRestAPI/` | Your uProduce API URL |
-| `UPRODUCE_USERNAME` | `David` | Your uProduce username |
-| `UPRODUCE_PASSWORD` | `Chalk2Chee$e` | Your uProduce password |
-| `CAMPAIGN_ID` | `9767` | Campaign ID |
-| `PLAN_ID` | `9709` | Plan ID |
-| `NODE_ENV` | `production` | Set to production |
+| Variable | Description |
+|----------|-------------|
+| `UPRODUCE_API_URL` | Your uProduce API URL (e.g., `https://your-server.xmpie.net/XMpieRestAPI/`) |
+| `UPRODUCE_USERNAME` | Your uProduce username |
+| `UPRODUCE_PASSWORD` | Your uProduce password |
+| `NODE_ENV` | Set to `production` |
+
+**Note:** Campaign ID, Plan ID, and Document IDs are configured in `products.json`, not as environment variables.
 
 **Optional - Persistent Thumbnail Caching (Vercel Blob Storage):**
 
@@ -57,11 +57,7 @@ To enable persistent thumbnail caching across deployments:
 Thumbnails are stored as public JPG files and served directly from Vercel's CDN.
 Without Blob Storage, thumbnails use in-memory caching (reset on each deployment).
 
-**Note:** Document IDs are now hardcoded in `server.js`:
-- A4 brochure: `39859`
-- US Letter brochure: `39733`
-
-The correct document is automatically selected based on the page size chosen by the user.
+**Note:** Document IDs are configured in `products.json` for each template size variant.
 
 **To add environment variables in Vercel:**
 
