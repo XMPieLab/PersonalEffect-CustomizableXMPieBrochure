@@ -4,6 +4,18 @@ A technical demonstration of the **XMPie uProduce REST API** for on-demand docum
 
 **Live Demo:** [personal-effect-customizable-xm-pie.vercel.app](https://personal-effect-customizable-xm-pie.vercel.app/)
 
+## Disclaimer
+
+> **This is NOT an XMPie product.**
+>
+> This application is a community demonstration of how the XMPie PersonalEffect APIs can be used to build custom web-to-print solutions. The source code is freely available for anyone to use, modify, and learn from.
+>
+> **No support is provided for this code by XMPie support.** If you encounter issues with this demo application, please use the GitHub Issues tab — do not contact XMPie support.
+>
+> **Prerequisites:** To run this application you will need access to a valid XMPie PersonalEffect server with the uProduce REST API licensed and enabled.
+>
+> **No templates or artwork are included in this repository.** Any templates shown in the live demonstration are hosted on an XMPie PersonalEffect server. You will need to create and configure your own templates on your own server.
+
 ## What This Demonstrates
 
 This demo illustrates key XMPie uProduce API capabilities:
@@ -199,6 +211,6 @@ See `VERCEL_DEPLOYMENT.md` for detailed instructions.
 - [PersonalEffect Print Pro](https://www.xmpie.com/products/print-design-and-vdp/)
 - [XMPie Developer Resources](https://www.xmpie.com)
 
----
+## License
 
-© 2026 XMPie - A CareAR Company
+This project is licensed under the [MIT License](LICENSE). © 2026 David Baldaro & XMPie - A CareAR Company.
