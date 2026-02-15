@@ -9,6 +9,8 @@ let useVercelBlob = false;
 
 // In-memory fallback cache for local development
 const memoryCache = new Map();
+const MEMORY_CACHE_MAX_SIZE = 50; // Max cached thumbnails
+const MEMORY_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL
 
 /**
  * Initialize the cache
@@ -66,8 +68,12 @@ async function getThumbnail(productId) {
   } else {
     const cached = memoryCache.get(productId);
     if (cached) {
-      console.log(`Thumbnail cache HIT (memory): ${productId}`);
-      return cached;
+      if (Date.now() > cached.expiresAt) {
+        memoryCache.delete(productId);
+      } else {
+        console.log(`Thumbnail cache HIT (memory): ${productId}`);
+        return cached.data;
+      }
     }
   }
   
@@ -95,7 +101,8 @@ async function setThumbnail(productId, imageData) {
       const result = await put(path, buffer, {
         access: 'public',
         contentType: 'image/jpeg',
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        allowOverwrite: true
       });
       
       console.log(`Thumbnail cached (Vercel Blob): ${productId} -> ${result.url}`);
@@ -105,7 +112,12 @@ async function setThumbnail(productId, imageData) {
       return null;
     }
   } else {
-    memoryCache.set(productId, imageData);
+    // Evict oldest entry if at capacity
+    if (memoryCache.size >= MEMORY_CACHE_MAX_SIZE) {
+      const oldestKey = memoryCache.keys().next().value;
+      memoryCache.delete(oldestKey);
+    }
+    memoryCache.set(productId, { data: imageData, expiresAt: Date.now() + MEMORY_CACHE_TTL_MS });
     console.log(`Thumbnail cached (memory): ${productId}`);
     return imageData;
   }

@@ -11,7 +11,10 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const helmet = require('helmet');
+const sanitizeHtml = require('sanitize-html');
 const AdmZip = require('adm-zip');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
@@ -28,6 +31,17 @@ const PORT = process.env.PORT || 3000;
 const rateLimitStore = new Map();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 30; // Max requests per window per IP
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Purge expired entries every 5 minutes
+
+// Periodic cleanup to prevent unbounded memory growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of rateLimitStore) {
+    if (now > record.resetTime) {
+      rateLimitStore.delete(ip);
+    }
+  }
+}, RATE_LIMIT_CLEANUP_INTERVAL_MS).unref();
 
 /**
  * Simple rate limiter middleware
@@ -69,13 +83,11 @@ function rateLimiter(req, res, next) {
  */
 function sanitizeInput(value) {
   if (typeof value !== 'string') return value;
-  // Remove script tags and dangerous patterns
-  return value
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=/gi, '')
-    .trim()
-    .substring(0, 500); // Limit field length
+  // Strip all HTML tags and trim to max length
+  return sanitizeHtml(value, {
+    allowedTags: [],
+    allowedAttributes: {}
+  }).trim().substring(0, 500);
 }
 
 /**
@@ -102,27 +114,152 @@ function validateProductId(productId) {
 // =============================================================================
 
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : (process.env.NODE_ENV === 'production' ? false : true),
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '1mb' })); // Limit request body size
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(rateLimiter); // Apply rate limiting to all routes
 
-// Security headers
+// Static asset cache busting: compute content hashes at startup
+const publicDir = path.join(__dirname, 'public');
+const assetHashes = {};
+const HASHED_ASSETS = ['app.js', 'styles.css'];
+
+HASHED_ASSETS.forEach(filename => {
+  try {
+    const content = fs.readFileSync(path.join(publicDir, filename));
+    const hash = crypto.createHash('md5').update(content).digest('hex').substring(0, 8);
+    const ext = path.extname(filename);
+    const base = path.basename(filename, ext);
+    assetHashes[filename] = `${base}.${hash}${ext}`;
+  } catch (err) {
+    console.warn(`Cache busting: could not hash ${filename}:`, err.message);
+  }
+});
+console.log('Asset hashes:', assetHashes);
+
+// Rewrite hashed filenames back to original files
 app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  for (const [original, hashed] of Object.entries(assetHashes)) {
+    if (req.path === `/${hashed}`) {
+      // Long-lived cache for hashed assets (1 year)
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      req.url = `/${original}`;
+      break;
+    }
+  }
   next();
 });
+
+app.use(express.static(publicDir, {
+  // Short cache for non-hashed static files (e.g. images, favicon)
+  maxAge: '1h',
+  // index.html is served via the explicit route below, not here
+  index: false
+}));
+app.use(rateLimiter); // Apply rate limiting to all routes
+
+// Security headers via helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  frameguard: { action: 'deny' },
+  xXssProtection: false
+}));
+
+// Validate required environment variables at startup
+const REQUIRED_ENV_VARS = ['UPRODUCE_API_URL', 'UPRODUCE_USERNAME', 'UPRODUCE_PASSWORD'];
+const missingVars = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
+if (missingVars.length > 0) {
+  console.error(`FATAL: Missing required environment variables: ${missingVars.join(', ')}`);
+  console.error('See .env.example for required configuration.');
+  process.exit(1);
+}
 
 // uProduce API configuration
 const UPRODUCE_API_URL = process.env.UPRODUCE_API_URL;
 const AUTH = {
   username: process.env.UPRODUCE_USERNAME,
   password: process.env.UPRODUCE_PASSWORD
+};
+
+// Pre-configured axios instance with timeout for all uProduce API calls
+const UPRODUCE_TIMEOUT_MS = 55000; // 55s (under Vercel's 60s function limit)
+const uproduceClient = axios.create({
+  baseURL: UPRODUCE_API_URL,
+  timeout: UPRODUCE_TIMEOUT_MS,
+  auth: AUTH
+});
+
+// =============================================================================
+// CIRCUIT BREAKER
+// =============================================================================
+
+const circuitBreaker = {
+  state: 'CLOSED',       // CLOSED = normal, OPEN = fast-fail, HALF_OPEN = testing
+  failureCount: 0,
+  failureThreshold: 5,   // Open after 5 consecutive failures
+  resetTimeout: 30000,   // Try again after 30 seconds
+  lastFailureTime: 0,
+
+  /**
+   * Record a successful API call
+   */
+  onSuccess() {
+    this.failureCount = 0;
+    this.state = 'CLOSED';
+  },
+
+  /**
+   * Record a failed API call
+   */
+  onFailure() {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+    if (this.failureCount >= this.failureThreshold) {
+      this.state = 'OPEN';
+      console.warn(`Circuit breaker OPEN after ${this.failureCount} consecutive failures`);
+    }
+  },
+
+  /**
+   * Check if requests should be allowed through
+   * @returns {boolean}
+   */
+  canRequest() {
+    if (this.state === 'CLOSED') return true;
+    if (this.state === 'OPEN') {
+      if (Date.now() - this.lastFailureTime > this.resetTimeout) {
+        this.state = 'HALF_OPEN';
+        console.log('Circuit breaker HALF_OPEN — allowing test request');
+        return true;
+      }
+      return false;
+    }
+    // HALF_OPEN: allow one request through to test
+    return true;
+  }
 };
 
 // Load products configuration
@@ -289,15 +426,17 @@ app.post('/api/preview', async (req, res) => {
 
     console.log('Submitting preview job to uProduce API...');
     
+    // Check circuit breaker before calling external API
+    if (!circuitBreaker.canRequest()) {
+      return res.status(503).json({ error: 'Service temporarily unavailable. Please try again shortly.' });
+    }
+
     // Submit job to uProduce API
-    const jobResponse = await axios.post(
-      `${UPRODUCE_API_URL}/v1/jobs/immediate`,
+    const jobResponse = await uproduceClient.post(
+      '/v1/jobs/immediate',
       jobTicket,
       {
-        auth: AUTH,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
 
@@ -314,13 +453,12 @@ app.post('/api/preview', async (req, res) => {
     }
 
     // Download the output ZIP file
-    const downloadResponse = await axios.get(
-      `${UPRODUCE_API_URL}/v1/jobs/${jobData.FriendlyId}/output/download`,
-      {
-        auth: AUTH,
-        responseType: 'arraybuffer'
-      }
+    const downloadResponse = await uproduceClient.get(
+      `/v1/jobs/${jobData.FriendlyId}/output/download`,
+      { responseType: 'arraybuffer' }
     );
+
+    circuitBreaker.onSuccess();
 
     // Extract JPG files from ZIP
     const zip = new AdmZip(downloadResponse.data);
@@ -353,10 +491,13 @@ app.post('/api/preview', async (req, res) => {
     });
 
   } catch (error) {
+    circuitBreaker.onFailure();
     console.error('Error generating preview:', error.response?.data || error.message);
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({ error: 'Preview generation timed out' });
+    }
     res.status(500).json({
-      error: 'Failed to generate preview',
-      details: error.response?.data || error.message
+      error: 'Failed to generate preview'
     });
   }
 });
@@ -378,15 +519,17 @@ app.post('/api/download-pdf', async (req, res) => {
 
     console.log('Submitting PDF job to uProduce API...');
     
+    // Check circuit breaker before calling external API
+    if (!circuitBreaker.canRequest()) {
+      return res.status(503).json({ error: 'Service temporarily unavailable. Please try again shortly.' });
+    }
+
     // Submit job to uProduce API
-    const jobResponse = await axios.post(
-      `${UPRODUCE_API_URL}/v1/jobs/immediate`,
+    const jobResponse = await uproduceClient.post(
+      '/v1/jobs/immediate',
       jobTicket,
       {
-        auth: AUTH,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
 
@@ -403,13 +546,12 @@ app.post('/api/download-pdf', async (req, res) => {
     }
 
     // Download the output ZIP file
-    const downloadResponse = await axios.get(
-      `${UPRODUCE_API_URL}/v1/jobs/${jobData.FriendlyId}/output/download`,
-      {
-        auth: AUTH,
-        responseType: 'arraybuffer'
-      }
+    const downloadResponse = await uproduceClient.get(
+      `/v1/jobs/${jobData.FriendlyId}/output/download`,
+      { responseType: 'arraybuffer' }
     );
+
+    circuitBreaker.onSuccess();
 
     // Extract PDF from ZIP
     const zip = new AdmZip(downloadResponse.data);
@@ -431,16 +573,22 @@ app.post('/api/download-pdf', async (req, res) => {
       });
     }
 
+    // Sanitize filename to prevent header injection
+    const safePdfFileName = pdfFileName.replace(/[^\w.\-]/g, '_');
+
     // Send PDF as download
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${pdfFileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${safePdfFileName}"`);
     res.send(pdfBuffer);
 
   } catch (error) {
+    circuitBreaker.onFailure();
     console.error('Error generating PDF:', error.response?.data || error.message);
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({ error: 'PDF generation timed out' });
+    }
     res.status(500).json({
-      error: 'Failed to generate PDF',
-      details: error.response?.data || error.message
+      error: 'Failed to generate PDF'
     });
   }
 });
@@ -450,6 +598,7 @@ app.post('/api/download-pdf', async (req, res) => {
  * Get available products/templates
  */
 app.get('/api/products', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes
   res.json(productsConfig);
 });
 
@@ -468,6 +617,7 @@ app.get('/api/thumbnail/:productId', async (req, res) => {
     
     // Check if product has a static thumbnail URL
     if (product.thumbnail) {
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
       return res.json({
         success: true,
         productId,
@@ -480,6 +630,7 @@ app.get('/api/thumbnail/:productId', async (req, res) => {
     // Check cache first
     const cachedThumbnail = await thumbnailCache.getThumbnail(productId);
     if (cachedThumbnail) {
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
       return res.json({
         success: true,
         productId,
@@ -499,12 +650,16 @@ app.get('/api/thumbnail/:productId', async (req, res) => {
     
     console.log(`Generating thumbnail for product: ${productId}`);
     
+    // Check circuit breaker before calling external API
+    if (!circuitBreaker.canRequest()) {
+      return res.status(503).json({ error: 'Service temporarily unavailable. Please try again shortly.' });
+    }
+
     // Submit job to uProduce API
-    const jobResponse = await axios.post(
-      `${UPRODUCE_API_URL}/v1/jobs/immediate`,
+    const jobResponse = await uproduceClient.post(
+      '/v1/jobs/immediate',
       jobTicket,
       {
-        auth: AUTH,
         headers: { 'Content-Type': 'application/json' }
       }
     );
@@ -519,10 +674,12 @@ app.get('/api/thumbnail/:productId', async (req, res) => {
     }
     
     // Download and extract first page
-    const downloadResponse = await axios.get(
-      `${UPRODUCE_API_URL}/v1/jobs/${jobData.FriendlyId}/output/download`,
-      { auth: AUTH, responseType: 'arraybuffer' }
+    const downloadResponse = await uproduceClient.get(
+      `/v1/jobs/${jobData.FriendlyId}/output/download`,
+      { responseType: 'arraybuffer' }
     );
+
+    circuitBreaker.onSuccess();
     
     const zip = new AdmZip(downloadResponse.data);
     const zipEntries = zip.getEntries();
@@ -543,6 +700,7 @@ app.get('/api/thumbnail/:productId', async (req, res) => {
     // Cache the thumbnail
     await thumbnailCache.setThumbnail(productId, thumbnailData);
     
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
     res.json({
       success: true,
       productId,
@@ -552,10 +710,13 @@ app.get('/api/thumbnail/:productId', async (req, res) => {
     });
     
   } catch (error) {
+    circuitBreaker.onFailure();
     console.error('Error generating thumbnail:', error.response?.data || error.message);
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({ error: 'Thumbnail generation timed out' });
+    }
     res.status(500).json({
-      error: 'Failed to generate thumbnail',
-      details: error.response?.data || error.message
+      error: 'Failed to generate thumbnail'
     });
   }
 });
@@ -565,6 +726,14 @@ app.get('/api/thumbnail/:productId', async (req, res) => {
  * Invalidate a cached thumbnail
  */
 app.delete('/api/thumbnail/:productId', async (req, res) => {
+  // Require admin API key for destructive operations
+  const adminKey = process.env.ADMIN_API_KEY;
+  const authHeader = req.headers.authorization;
+
+  if (!adminKey || !authHeader || authHeader !== `Bearer ${adminKey}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const { productId } = req.params;
   await thumbnailCache.invalidateThumbnail(productId);
   res.json({ success: true, message: `Thumbnail cache cleared for ${productId}` });
@@ -580,21 +749,50 @@ app.get('/api/health', (req, res) => {
 
 /**
  * GET /
- * Serve the main HTML page
+ * Serve the main HTML page with cache-busted asset references
  */
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  let html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  // Replace asset references with hashed versions
+  for (const [original, hashed] of Object.entries(assetHashes)) {
+    html = html.split(original).join(hashed);
+  }
+  res.setHeader('Cache-Control', 'no-cache'); // Always revalidate HTML
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
 });
 
 // Initialize cache and start server
+let server;
 thumbnailCache.initCache().then(() => {
   if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
       console.log(`uProduce API URL: ${UPRODUCE_API_URL}`);
     });
   }
 });
+
+// Graceful shutdown handling
+function gracefulShutdown(signal) {
+  console.log(`${signal} received. Shutting down gracefully...`);
+  if (server) {
+    server.close(() => {
+      console.log('HTTP server closed. All in-flight requests completed.');
+      process.exit(0);
+    });
+    // Force shutdown after 10 seconds if connections don't drain
+    setTimeout(() => {
+      console.error('Forced shutdown — connections did not drain in time.');
+      process.exit(1);
+    }, 10000).unref();
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Export for Vercel serverless
 module.exports = app;

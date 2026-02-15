@@ -16,8 +16,18 @@
       "dest": "server.js"
     },
     {
-      "src": "/(.*\\.(css|js|png|jpg|jpeg|svg|ico))",
-      "dest": "public/$1"
+      "src": "/(.+\\.[a-f0-9]{8}\\.(js|css))",
+      "dest": "server.js"
+    },
+    {
+      "src": "/(.*\\.(png|jpg|jpeg|svg|ico))",
+      "dest": "public/$1",
+      "headers": { "Cache-Control": "public, max-age=3600" }
+    },
+    {
+      "src": "/(.*\\.(css|js))",
+      "dest": "public/$1",
+      "headers": { "Cache-Control": "public, max-age=3600" }
     },
     {
       "src": "/(.*)",
