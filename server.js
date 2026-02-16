@@ -762,6 +762,21 @@ app.get('/', (req, res) => {
   res.send(html);
 });
 
+/**
+ * GET /about
+ * Serve the about page with cache-busted asset references
+ */
+app.get('/about', (req, res) => {
+  let html = fs.readFileSync(path.join(publicDir, 'about.html'), 'utf8');
+  // Replace asset references with hashed versions
+  for (const [original, hashed] of Object.entries(assetHashes)) {
+    html = html.split(original).join(hashed);
+  }
+  res.setHeader('Cache-Control', 'no-cache'); // Always revalidate HTML
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+});
+
 // Initialize cache and start server
 let server;
 thumbnailCache.initCache().then(() => {
